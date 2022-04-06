@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
 using TMPro;
 using UnityEngine.UI;
@@ -45,21 +46,13 @@ public class GameManager : MonoBehaviour
     public int seaFlowersMin = 1;
     public int seaFlowersMax = 3;
 
-    /*Possible actions during a day
-    - Comb the Beach (+ seashells / bottles)
-    - Clear Debris (+ pots / bottles)
-    - Set up Bottles (bottles -> bottled sunlight)
-    - Plant Seashells (seashells / pots -> sea flowers)
-    - Eat (sea flowers -> health)
-    - Pray (+ devotion)
-    - Cloudwatching?
-    */
+    private const string SaveDataFile = "SanctumSave.txt";
 
     //Ending variables
-    public bool sunEnding;
-    public bool darkEnding;
-    public bool starsEnding;
-    public bool moonEnding;
+    public bool sunEnding = false;
+    public bool darkEnding = false;
+    public bool starsEnding = false;
+    public bool moonEnding = false;
 
     [SerializeField] private GameObject returnToMenuButton;
     [SerializeField] private GameObject titleMenuContainer;
@@ -100,6 +93,7 @@ public class GameManager : MonoBehaviour
     void Start()
     {
         UpdateItemFind();
+        LoadGame();
         DisplayTitleMenu();
     }
 
@@ -425,8 +419,10 @@ public class GameManager : MonoBehaviour
         }
 
         //Button to return to menu
-        //TODO: Save data?
         returnToMenuButton.SetActive(true);
+
+        //Save obtained endings
+        SaveGame();
     }
 
     /// <summary>
@@ -661,6 +657,12 @@ public class GameManager : MonoBehaviour
         returnToMenuButton.SetActive(false);
         titleMenuContainer.SetActive(true);
 
+        //End any active dialogue
+        flowchart.StopAllBlocks();
+
+                //Save obtained endings
+        SaveGame();
+
         //Sun
         titleSunSetting.enabled = !sunEnding;
         titleSun.enabled = sunEnding;
@@ -681,7 +683,7 @@ public class GameManager : MonoBehaviour
         //Play the final dialogue if all endings have been obtained
         if (sunEnding && moonEnding && starsEnding && darkEnding)
         {
-            flowchart.ExecuteBlock("Finallusion");
+            flowchart.ExecuteBlock("Finallusion");            
         }
     }
 
@@ -691,6 +693,7 @@ public class GameManager : MonoBehaviour
     public void PlayGame()
     {
         titleMenuContainer.SetActive(false);
+        flowchart.StopAllBlocks();
     }
 
     /// <summary>
@@ -720,6 +723,45 @@ public class GameManager : MonoBehaviour
             //No health message
             lastActionText1.text = "Body succumbed from lack of nourishment.";
             lastActionText2.text = "";
+        }
+    }
+
+    /// <summary>
+    /// Save the endings the player has obtained.
+    /// </summary>
+    public void SaveGame()
+    {
+        //Build the save data string
+        string saveData = string.Format("{0},{1},{2},{3}", sunEnding.ToString(), moonEnding.ToString(), starsEnding.ToString(), darkEnding.ToString());
+
+        //Save data to file
+        File.WriteAllText(SaveDataFile, saveData);
+    }
+
+    /// <summary>
+    /// Load the endings the player has obtained.
+    /// </summary>
+    public void LoadGame()
+    {
+        if (File.Exists(SaveDataFile))
+        {
+            //File format:
+            //Bool value (true, false) for each ending
+            //Sun, Moon, Stars, Darkness
+            string[] fileContent = File.ReadAllText(SaveDataFile).Split(',');
+
+            //Set ending status
+            bool.TryParse(fileContent[0], out bool ending);
+            sunEnding = ending;
+
+            bool.TryParse(fileContent[1], out ending);
+            moonEnding = ending;
+
+            bool.TryParse(fileContent[2], out ending);
+            starsEnding = ending;
+
+            bool.TryParse(fileContent[3], out ending);
+            darkEnding = ending;
         }
     }
 
